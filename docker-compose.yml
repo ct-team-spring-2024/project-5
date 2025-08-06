@@ -1,0 +1,180 @@
+version: '3.8'
+
+services:
+  zookeeper1:
+    image: zookeeper:3.8.4
+    hostname: zookeeper1
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;2181 server.2=zookeeper2:2888:3888;2181 server.3=zookeeper3:2888:3888;2181
+    networks:
+      - hadoop-net
+
+  zookeeper2:
+    image: zookeeper:3.8.4
+    hostname: zookeeper2
+    environment:
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;2181 server.2=zookeeper2:2888:3888;2181 server.3=zookeeper3:2888:3888;2181
+    networks:
+      - hadoop-net
+
+  zookeeper3:
+    image: zookeeper:3.8.4
+    hostname: zookeeper3
+    environment:
+      ZOO_MY_ID: 3
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;2181 server.2=zookeeper2:2888:3888;2181 server.3=zookeeper3:2888:3888;2181
+    networks:
+      - hadoop-net
+
+  # JournalNodes (3 nodes for HA)
+  journalnode1:
+    image: apache/hadoop:3.4.1
+    hostname: journalnode1
+    command: bash -c "chown -R hadoop:hadoop /journal && hdfs journalnode"
+    user: root
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - journalnode1-journal:/journal
+    networks:
+      - hadoop-net
+
+  journalnode2:
+    image: apache/hadoop:3.4.1
+    hostname: journalnode2
+    command: bash -c "chown -R hadoop:hadoop /journal && hdfs journalnode"
+    user: root
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - journalnode2-journal:/journal
+    networks:
+      - hadoop-net
+
+  journalnode3:
+    image: apache/hadoop:3.4.1
+    hostname: journalnode3
+    command: bash -c "chown -R hadoop:hadoop /journal && hdfs journalnode"
+    user: root
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - journalnode3-journal:/journal
+    networks:
+      - hadoop-net
+
+  # NameNodes (active and standby)
+  namenode1:
+    image: apache/hadoop:3.4.1
+    hostname: namenode1
+    command: bash -c "if [ ! -f /hadoop/dfs/name/current/VERSION ]; then hdfs namenode -format -clusterId hadoop-cluster -force; fi && chown -R hadoop:hadoop /hadoop/dfs/name && hdfs zkfc -formatZK -force && hdfs --daemon start zkfc && hdfs namenode"
+    user: root
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - NAMENODE_ID=nn1
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - namenode1-data:/hadoop/dfs/name
+    networks:
+      - hadoop-net
+    depends_on:
+      - journalnode1
+      - journalnode2
+      - journalnode3
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+
+  namenode2:
+    image: apache/hadoop:3.4.1
+    hostname: namenode2
+    command: bash -c "sleep 10 && if [ ! -f /hadoop/dfs/name/current/VERSION ]; then hdfs namenode -bootstrapStandby; fi && chown -R hadoop:hadoop /hadoop/dfs/name && hdfs --daemon start zkfc && hdfs namenode"
+    user: root
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - NAMENODE_ID=nn2
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - namenode2-data:/hadoop/dfs/name
+    networks:
+      - hadoop-net
+    depends_on:
+      - journalnode1
+      - journalnode2
+      - journalnode3
+      - namenode1
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+
+  # DataNodes (3 nodes)
+  datanode1:
+    image: apache/hadoop:3.4.1
+    hostname: datanode1
+    command: hdfs datanode
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - datanode1-data:/hadoop/dfs/data
+    networks:
+      - hadoop-net
+    depends_on:
+      - namenode1
+      - namenode2
+
+  datanode2:
+    image: apache/hadoop:3.4.1
+    hostname: datanode2
+    command: hdfs datanode
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - datanode2-data:/hadoop/dfs/data
+    networks:
+      - hadoop-net
+    depends_on:
+      - namenode1
+      - namenode2
+
+  datanode3:
+    image: apache/hadoop:3.4.1
+    hostname: datanode3
+    command: hdfs datanode
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - datanode3-data:/hadoop/dfs/data
+    networks:
+      - hadoop-net
+    depends_on:
+      - namenode1
+      - namenode2
+networks:
+  hadoop-net:
+    driver: bridge
+
+volumes:
+  namenode1-data:
+  namenode2-data:
+  datanode1-data:
+  datanode2-data:
+  datanode3-data:
+  journalnode1-journal:
+  journalnode2-journal:
+  journalnode3-journal:
