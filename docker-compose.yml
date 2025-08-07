@@ -1,3 +1,4 @@
+version: '3.8'
 
 services:
   zookeeper1:
@@ -27,7 +28,6 @@ services:
     networks:
       - hadoop-net
 
-  # JournalNodes (3 nodes for HA)
   journalnode1:
     image: apache/hadoop:3.4.1
     hostname: journalnode1
@@ -70,7 +70,6 @@ services:
     networks:
       - hadoop-net
 
-  # NameNodes (active and standby)
   namenode1:
     image: apache/hadoop:3.4.1
     hostname: namenode1
@@ -116,7 +115,6 @@ services:
       - zookeeper2
       - zookeeper3
 
-  # DataNodes (3 nodes)
   datanode1:
     image: apache/hadoop:3.4.1
     hostname: datanode1
@@ -164,9 +162,10 @@ services:
     depends_on:
       - namenode1
       - namenode2
-  spark-app:
+  
+  spark-master:
     image: apache/spark:4.0.0
-    hostname: spark-app
+    hostname: spark-master
     container_name: spark-master
     environment:
       - SPARK_MODE=master
@@ -177,12 +176,12 @@ services:
       - ./codes:/app/codes
     working_dir: /app
     ports:
-      - "8080:8080"    # Spark Master Web UI
-      - "7077:7077"    # Spark Master submit port
+      - "8080:8080"
+      - "7077:7077"
     command: >
       bash -c "
       /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
-      --host spark-app
+      --host spark-master
       --port 7077
       --webui-port 8080
       "
@@ -194,6 +193,27 @@ services:
       - datanode1
       - datanode2
       - datanode3
+  
+  spark-worker:
+    image: apache/spark:4.0.0
+    container_name: spark-worker
+    hostname: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_PORT=7078
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_DIST_CLASSPATH=/opt/spark/jars/*:/etc/hadoop/*
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+    networks:
+      - hadoop-net
+    command: bash -c "sleep 600 && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077"
 
 networks:
   hadoop-net:
