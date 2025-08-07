@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   zookeeper1:
@@ -165,6 +164,37 @@ services:
     depends_on:
       - namenode1
       - namenode2
+  spark-app:
+    image: apache/spark:4.0.0
+    hostname: spark-app
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - HADOOP_CONF_DIR=/etc/hadoop
+      - SPARK_DIST_CLASSPATH=/opt/spark/jars/*:/etc/hadoop/*
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - ./codes:/app/codes
+    working_dir: /app
+    ports:
+      - "8080:8080"    # Spark Master Web UI
+      - "7077:7077"    # Spark Master submit port
+    command: >
+      bash -c "
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      --host spark-app
+      --port 7077
+      --webui-port 8080
+      "
+    networks:
+      - hadoop-net
+    depends_on:
+      - namenode1
+      - namenode2
+      - datanode1
+      - datanode2
+      - datanode3
+
 networks:
   hadoop-net:
     driver: bridge
