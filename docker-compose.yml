@@ -165,7 +165,7 @@ services:
       - namenode1
       - namenode2
   spark-app:
-    image: apache/spark:4.0.0
+    image: spark:4.0.0
     hostname: spark-app
     container_name: spark-master
     environment:
@@ -178,13 +178,11 @@ services:
     working_dir: /app
     ports:
       - "8080:8080"    # Spark Master Web UI
-      - "7077:7077"    # Spark Master submit port
     command: >
       bash -c "
-      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
-      --host spark-app
-      --port 7077
-      --webui-port 8080
+      /opt/spark/sbin/start-master.sh --host localhost &&
+      /opt/spark/sbin/start-worker.sh spark://localhost:7077 &&
+      tail -f /dev/null
       "
     networks:
       - hadoop-net
