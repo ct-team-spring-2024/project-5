@@ -5,3 +5,6 @@
 .project
 .settings
 *.parquet
+
+/data
+/target

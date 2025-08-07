@@ -162,10 +162,44 @@ services:
     depends_on:
       - namenode1
       - namenode2
+  data-loader:
+    image: apache/hadoop:3.4.1
+    hostname: data-loader
+    user: root
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - HADOOP_CONF_DIR=/etc/hadoop
+    volumes:
+      - ./hadoop-config:/etc/hadoop
+      - ./data:/data  # Mount your local data folder
+    networks:
+      - hadoop-net
+    command: >
+      bash -c "
+      echo 'Waiting for HDFS to be ready...' &&
+      until hdfs dfsadmin -report -live 2>/dev/null | grep -q 'Live datanodes'; do
+        sleep 5
+      done &&
+
+      echo 'Creating HDFS directory structure...' &&
+      hdfs dfs -mkdir -p /data/taxi &&
+
+      echo 'Loading data to HDFS...' &&
+      hdfs dfs -put -f /data/* /data/taxi/ &&
+
+      echo 'Verifying upload:' &&
+      hdfs dfs -ls -R /data/taxi &&
+      echo 'Data loading completed successfully'
+      "
+    depends_on:
+      - namenode1
+      - namenode2
+      - datanode1
+      - datanode2
+      - datanode3
   spark-app:
     image: spark:4.0.0
     hostname: spark-app
-    container_name: spark-master
     environment:
       - SPARK_MODE=master
       - HADOOP_CONF_DIR=/etc/hadoop
@@ -185,32 +219,7 @@ services:
     networks:
       - hadoop-net
     depends_on:
-      - namenode1
-      - namenode2
-      - datanode1
-      - datanode2
-      - datanode3
-  spark-worker:
-    image: apache/spark:4.0.0
-    container_name: spark-worker
-    hostname: spark-worker
-    depends_on:
-      - spark-master
-    environment:
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=1
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_WORKER_PORT=7078
-      - SPARK_WORKER_WEBUI_PORT=8081
-      - SPARK_DIST_CLASSPATH=/opt/spark/jars/*:/etc/hadoop/*
-    ports:
-      - "8081:8081"
-    volumes:
-      - ./hadoop-config:/etc/hadoop
-    networks:
-      - hadoop-net
-    command: bash -c "sleep 600 && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077"
-
+      - data-loader
 networks:
   hadoop-net:
     driver: bridge

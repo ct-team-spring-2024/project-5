@@ -1,13 +1,13 @@
 import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
+import org.apache.spark.sql.Roww;
 import org.apache.spark.sql.SparkSession;
 import static org.apache.spark.sql.functions.*;
 
-public class ParquetTLCTripAnalyzer {
+public class Task1 {
     public static void main(String[] args) {
         SparkSession spark = SparkSession.builder()
                 .appName("Parquet TLC Trip Data Analysis")
-                .getOrCreate();
+            .getOrCreate();
 
         // Path to the dataset in HDFS (assuming a Parquet file)
         String hdfsPath = "hdfs://hadoop-cluster/data/taxi/yellow_tripdata_2024-03.parquet";
