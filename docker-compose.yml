@@ -200,13 +200,14 @@ services:
   spark-app:
     image: spark:4.0.0
     hostname: spark-app
+    user: root
     environment:
       - SPARK_MODE=master
       - HADOOP_CONF_DIR=/etc/hadoop
       - SPARK_DIST_CLASSPATH=/opt/spark/jars/*:/etc/hadoop/*
     volumes:
       - ./hadoop-config:/etc/hadoop
-      - ./codes:/app/codes
+      - ./src/main/java:/app/codes
     working_dir: /app
     ports:
       - "8080:8080"    # Spark Master Web UI
@@ -214,6 +215,8 @@ services:
       bash -c "
       /opt/spark/sbin/start-master.sh --host localhost &&
       /opt/spark/sbin/start-worker.sh spark://localhost:7077 &&
+      chmod +x /app/codes/run-tasks.sh &&
+      /app/codes/run-tasks.sh &&
       tail -f /dev/null
       "
     networks:

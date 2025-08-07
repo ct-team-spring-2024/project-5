@@ -3,10 +3,10 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import static org.apache.spark.sql.functions.*;
 
-public class Task1 {
+public class Task2 {
     public static void main(String[] args) {
         SparkSession spark = SparkSession.builder()
-                .appName("Task1")
+                .appName("Task2")
             .getOrCreate();
 
         // Path to the dataset in HDFS (assuming a Parquet file)
