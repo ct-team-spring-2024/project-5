@@ -5,9 +5,13 @@ cd /app/codes
 
 # Step 0: Delete all .class and .jar files
 echo "Cleaning up previous builds..."
-rm -f *.class *.jar
 
 # Loop through each task file
+rm -f *.class *.jar
+rm -rf artifacts
+
+sleep 30
+
 for task in Task1 Task2 Task3 Task4; do
     echo "Processing $task..."
     # Step 1: Compile the Java file
@@ -21,7 +25,7 @@ for task in Task1 Task2 Task3 Task4; do
     # Step 3: Submit Spark job
     /opt/spark/bin/spark-submit --master spark://localhost:7077 --class "$task" "$task.jar"
     # Clean up for next task
-    rm -f *.class
+    rm -f *.class *.jar
 done
 
 echo "All tasks processed!"
